@@ -8,7 +8,7 @@ Output:
 * the binarized video that contains the front only
 * a vector h(x) with the front, that evolves in time and is stored like a 2d matrix h(x, t)
 * further analysis, like power spectral density and correlations functions based on h(x, t)
-* a so-called "waiting time matrix", that represent a count of how much time the front spends in every pixel
+* a so-called "waiting time matrix", that represents a count of how much time the front spends in every pixel
 
 Code structure:
 * class VideoAnalysis.m: main class that does everything. Call the different methods of the class to binarize the video, cropt it interactively in space and/or time, save the binarize video and the front h(x,t) and do the power spectra analysis
