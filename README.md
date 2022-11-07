@@ -19,7 +19,7 @@ Notes:
 * binarization is done with ''imbinarize'' using 'global' method; may not work for your case, if so tweak it till works.
 * a violent "bwareaopen' function is applied, with a connectivity parameter of 50 000 or so. This works great to remove everything that is not the front itself, but may fail for your own specific video. If so, tweak it.
 * edge detection is done with the ''edge'' function of Matlab, using the standard 'sobel' method. Works for my video, but it might fail in your case; if so, tweak it till it works.
-* if tweaking the above 3 points does not make it work, maybe the problem is in the video: contrast and illumination must be alrady good to be able to analyse them
+* if tweaking the above 3 points does not make it work, maybe the problem is in the video: contrast and illumination must be already good to be able to analyse them
 * may fail on Windows due to wrong paths (/ instad of \, tested on Linux only)
 * there is currently no background substraction 
 
