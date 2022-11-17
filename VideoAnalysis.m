@@ -45,50 +45,97 @@ classdef VideoAnalysis < handle
         function binarize_video(obj)
         %% this function binarize the video (imbinarize, bwareaopen, edge 
         % detection with Sobel), and saves it in vid/xxx_bin.avi
-        connectivity = 200000;
+        % WILL FAIL FOR VIDEOS IN GRAYSCALE ALREADY
+        obj.p.connectivity = 20000; % connectivity for bwareaopen is defined here
 
         % first, plot all the steps separately IF Verbose
-        obj.p.reader.CurrentTime = 0.;
+        % fig1: original, grayscale, RGB separately
+        % fig2: binarize with global, bwareaopen, Sobel
+        % fig3: x, y of the front directly form Sobel
+        % fig4: cleaned up x, y of the front
+        
         if obj.opt.Verbose
+            % first frame binarization check
+            obj.p.reader.CurrentTime = 0.;
             f = readFrame(obj.p.reader);
-            figure
-            subplot(2, 1, 1); montage({f, rgb2gray(f)})
-            subplot(2, 1, 2); montage({f(:, :, 1), f(:, :, 2), f(:, :, 3)}, 'Size', [1, 3])
-            figure
-            bw = flipud( imbinarize(rgb2gray(f),'global'));
-            subplot(2, 1, 1); montage({bw, edge(bw, 'sobel')})
-            subplot(2, 1, 2); histogram(rgb2gray(f))
-        end
-
-        i=1; obj.p.reader.CurrentTime = 0.;
-        while hasFrame(obj.p.reader)
-            %read the single frame
-            f = readFrame(obj.p.reader);
-            f = rgb2gray(f);
-%            f = f(:, :, 1); % change here to use only one RGB channel
-            f = flipud( imbinarize(f,'global'));
-            % flip - the front in going UP -- follow this also in velcity_maps.m
-            f = bwareaopen(f, 50);
-            f = ~bwareaopen(~f, connectivity);
-            f = edge(f, 'Sobel');
+            plot_test_binarization_and_front_extraction(obj, f, 'first')
             
-            if i == 1 %store them for later
-	            first_frame = f;
-            end
-            last_frame = f;
-            if mod(i,5000) == 0 
-	            fprintf('Extracting front from frame %u of %u\n', i, round(vid.Duration*vid.FrameRate))
-            end
-            i=i+1;
+            % last frame binarization check
+            obj.p.reader.CurrentTime = obj.p.reader.Duration - 1/obj.p.reader.FrameRate; % set to the very last frame
+            f = readFrame(obj.p.reader);
+            plot_test_binarization_and_front_extraction(obj, f, 'last')
+
+            % middle frame binarization check
+            obj.p.reader.CurrentTime = obj.p.reader.Duration*0.5; % set time in the middle
+            f = readFrame(obj.p.reader);
+            plot_test_binarization_and_front_extraction(obj, f, 'middle')
         end
-        figure
-        imshow(first_frame)
-        figure
-        imshow(last_frame)
+        
+        % now, ask if you want to proceed with binarization
+        name_bin_video = obj.p.name + '_bin';
+        choice = input('Do you want to create a new binarized video in ./vid/' + name_bin_video  + ' ? (Y/n)\nIn: ','s');
+        if choice == 'Y' || choice == 'y' % create the new, cropped video
+            if isfile(obj.p.filepath + '/' + name_bin_video + '.avi')
+                fprintf('*** The binarized video already exists, IT WILL BE OVERWRITTEN RIP BUONANOTTE CIAO ***\n')
+            end
+            vid_out = VideoWriter(obj.p.filepath + '/' + name_bin_video, 'Motion JPEG AVI');
+            vid_out.FrameRate = obj.p.reader.FrameRate; % very imp
+            open(vid_out);
+            i=0; obj.p.reader.CurrentTime = 0;
+            fprintf('Start of binarization...'); tstart = tic;
+            while hasFrame(obj.p.reader) && i <= round(obj.p.reader.FrameRate*(obj.p.reader.Duration-1./obj.p.reader.FrameRate))
+                f = readFrame(obj.p.reader);
+                % here I do the binarization + Sobel; less lines => much
+                % faster
+                bw = bwareaopen(( imbinarize(rgb2gray(f),'global')), obj.p.connectivity);
+                bw = edge(~bwareaopen(~bw, obj.p.connectivity), 'Sobel');
+                writeVideo(vid_out, double(bw));
+                i = i+1;
+            end
+            close(vid_out); tend = toc(tstart); 
+            fprintf('... finished successfully in %3.1f s.\nEnjoy :)\n', tend)
+        end
         end
 
+        function plot_test_binarization_and_front_extraction(obj, f, frame_title)
+        % function that plots the frame, then grayscale, RGB, then
+        % the binarize frame, then bin + bwareopen, then front
+        % extraction
+        figure; sgtitle(strcat(frame_title, 'frame'));
+        subplot(2, 1, 1); montage({f, rgb2gray(f)}) % original, grayscale
+        title('original, grayscale')
+        subplot(2, 1, 2); montage({f(:, :, 1), f(:, :, 2), f(:, :, 3)}, 'Size', [1, 3]) % R, G, B channels separately
+        title(' R, G, B channels separately')
+        figure; sgtitle(strcat(frame_title, ' frame, binarization check'))
+        bw = flipud( imbinarize(rgb2gray(f),'global'));
+        bw_cleaned = bwareaopen(bw, obj.p.connectivity);
+        bw_cleaned = ~bwareaopen(~bw_cleaned, obj.p.connectivity); % double cleaning of positive and negative island of pixel
+        subplot(2, 1, 1); montage({bw, bw_cleaned}); title('binarize, binarize + bwareaopen')
+        subplot(2, 1, 2); montage({edge(bw_cleaned, 'Sobel')}); title('Sobel edge detection')
+        
+        % follows the extraction of h(x)
+        front = edge(bw_cleaned, 'Sobel');
+        h = zeros([size(front, 2), 1]); % vector of the height
+        x = 1:length(h); % pixel coordinate (quite useless)
+        for i=1:size(front, 2) % cycle over x of front
+            col = front(:, i);
+            if ~any(col)
+                fprintf('There is a column without any point!!\CASE NOT IMPLEMENTED!!!\n')
+            end
+            if sum(col)>1
+                fprintf('In column %i there are %i points\n', i, sum(col))
+                h(i) = mean(find(col==1)); % take the mean value of the front points
+            else
+                h(i) = find(col==1); % return the pixel position
+            end
+        end
+        figure; sgtitle(strcat(frame_title, ' frame front extraction; x = pixel coordinate, h = front coordinate'))
+        scatter(x, h); hold on; plot(x, h);   
+        xlabel('pixel, x'); ylabel('fornt position (pixel, h(x))')
+        end
+    
         function crop_video_in_space(obj)
-            % this function allows to crop the video in space coordinates
+            %% this function allows to crop the video in space coordinates
             % INTERACTIVELY!!
             % will make a new video called original_video_c.avi , where _c =
             % 'cropped', in folder ./vid/
@@ -143,11 +190,69 @@ classdef VideoAnalysis < handle
                     writeVideo(vid_out, f);
                    	i = i+1;
                 end
-                close(vid_out);
+                close(vid_out); load gong.mat; sound(y);
                 fprintf('Cropped video generated and saved correctly. Enjoy :)\n')
 	        end
         end
 
+        
+        function crop_video_in_time(obj)
+        %% this functions allows to interactively crop a video in time
+        video_first_frame = 0;
+        video_last_frame = obj.p.reader.NumFrames;
+        satisfied = false;
+        beg_frame = readFrame(obj.p.reader);
+        obj.p.reader.CurrentTime=obj.p.reader.Duration * 0.5;
+        middle_frame = readFrame(obj.p.reader);
+        obj.p.reader.CurrentTime = (obj.p.reader.NumFrames-1)/obj.p.reader.FrameRate;
+        end_frame = readFrame(obj.p.reader);
+        figure; 
+        montage({beg_frame, middle_frame, end_frame}, "BorderSize", 10, 'BackgroundColor', 'red'); title('First, middle, last original frames')
+        while ~satisfied
+
+            fprintf('Current frame interval: [%g, %g]\n',video_first_frame, video_last_frame);
+            new_first_frame_number = input('Enter the number of the NEW first frame\n');
+            new_last_frame_number = input('Enter the number of the NEW last frame\n');
+            
+            obj.p.reader.CurrentTime = new_first_frame_number / obj.p.reader.FrameRate; % pick 3 frames to be displayed
+            new_beg_frame = readFrame(obj.p.reader);
+            obj.p.reader.CurrentTime = new_last_frame_number / obj.p.reader.FrameRate * 0.5;
+            new_middle_frame = readFrame(obj.p.reader);
+            obj.p.reader.CurrentTime = (new_last_frame_number-1) / obj.p.reader.FrameRate;
+            new_end_frame = readFrame(obj.p.reader);
+
+            figure
+            montage({beg_frame, middle_frame, end_frame, new_beg_frame, new_middle_frame, new_end_frame}, "BorderSize", 10, 'BackgroundColor', 'red', "Size",[2 3]);
+            title('First, middle, last original --> NEW frames')
+            choice=input('Are you satisfied? (Y/n)\nIn: ','s');
+            if choice == 'Y' || choice == 'y'
+                satisfied=true;
+            end
+        end
+        name_ct_video = obj.p.name + '_ct'; % add "_ct" for the cropped video's name in time
+        choice = input('Do you want to create a new, time-cropped, video named ' + name_ct_video  + ' ? (Y/n)\nIn: ','s');
+        if choice == 'Y' || choice == 'y' % create the new, cropped video
+            if isfile(obj.p.filepath + '/' + name_ct_video + '.avi')
+                fprintf('*** The cropped video already exists, IT WILL BE OVERWRITTEN RIP BUONANOTTE CIAO ***\n')
+            end
+            % write the new video
+            vid_out = VideoWriter(obj.p.filepath + '/' + name_ct_video, 'Motion JPEG AVI');
+            vid_out.FrameRate = obj.p.reader.FrameRate; % very imp
+            open(vid_out);
+            i=0; obj.p.reader.CurrentTime = new_first_frame_number/obj.p.reader.FrameRate; % start at the new frame
+            while hasFrame(obj.p.reader) && i <=  (new_last_frame_number - new_first_frame_number)
+                f = readFrame(obj.p.reader);
+                writeVideo(vid_out, f);
+                i = i+1;
+            end
+            close(vid_out);
+            fprintf('Time-cropped video generated and saved correctly. Enjoy :)\n')
+        end
+
+        
+        close all;
+        end
+        %         
         function get_pixel_density(obj)
         %% calibrate the space coordinates with an appropriate 
         % pixel -> m conversion factor
