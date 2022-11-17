@@ -16,6 +16,9 @@ classdef VideoAnalysis < handle
         p % p == parameters, stores all video metadata (size, framerate, etc),
             % the instance of the VideoReader class that further containts all the size, framerate, etc etc
         opt % stores options of the class
+        h % h(x, t) matrix, matrix of the front height; size(h, 1) = orizonthal length of the frame;
+        % size(h, 2) = obj.p.reader.NumFrames, i.e. the number of frames of
+        % the video
     end
 
     methods
@@ -29,13 +32,15 @@ classdef VideoAnalysis < handle
             fprintf('Init of video %s\t', video_name_and_path)
             obj.p.name_and_path = video_name_and_path; % save full path
             [obj.p.filepath, obj.p.name, obj.p.ext] = fileparts(video_name_and_path); % save video struct
+            obj.p.path_analysis = './fronts/' + obj.p.name + '/';
+            obj.p.name_analysis = obj.p.name + '.mat'; % file to save h(x,t) and all class information
+            obj.p.full_path_analysis = obj.p.path_analysis + obj.p.name_analysis;
             obj.opt.SaveFrontVideo = options.SaveFrontVideo;
             obj.opt.Verbose = options.Verbose;
             if ~isfile(obj.p.name_and_path) % check existance
                 fprintf('Given video does not exists!\nAhooo!\n')
             end
             obj.p.reader = VideoReader(obj.p.name_and_path);
-
             if obj.opt.Verbose % print all video Reader info
                 obj.p.reader
             end
@@ -53,7 +58,8 @@ classdef VideoAnalysis < handle
         % fig2: binarize with global, bwareaopen, Sobel
         % fig3: x, y of the front directly form Sobel
         % fig4: cleaned up x, y of the front
-        
+        obj.p.reader.CurrentTime = 0.; % ugly, I need f later to initialize h(x, t) correctly
+        f = readFrame(obj.p.reader);
         if obj.opt.Verbose
             % first frame binarization check
             obj.p.reader.CurrentTime = 0.;
@@ -74,6 +80,17 @@ classdef VideoAnalysis < handle
         % now, ask if you want to proceed with binarization
         name_bin_video = obj.p.name + '_bin';
         choice = input('Do you want to create a new binarized video in ./vid/' + name_bin_video  + ' ? (Y/n)\nIn: ','s');
+        choice_front_extr = input('Do you also want to extract the front matrix h(x, t)? (Y/n)\n', 's');
+        
+        if choice_front_extr == 'Y' || choice_front_extr == 'y' % initialize h(x, t) and appropriate folder
+            obj.h = zeros([size(f, 2), obj.p.reader.NumFrames], 'uint64');
+            fprintf('h matrix is %i * %i wide (oriz. pixel length * NumFrames)\n', size(obj.h, 1), size(obj.h, 2))
+            if ~exist(obj.p.path_analysis, 'dir') % make a folder to store h(x, t) etc etc
+                mkdir(obj.p.path_analysis)
+                fprintf('Folder %s not found, made a new one.\n', obj.p.path_analysis)
+            end
+        end
+        
         if choice == 'Y' || choice == 'y' % create the new, cropped video
             if isfile(obj.p.filepath + '/' + name_bin_video + '.avi')
                 fprintf('*** The binarized video already exists, IT WILL BE OVERWRITTEN RIP BUONANOTTE CIAO ***\n')
@@ -81,7 +98,7 @@ classdef VideoAnalysis < handle
             vid_out = VideoWriter(obj.p.filepath + '/' + name_bin_video, 'Motion JPEG AVI');
             vid_out.FrameRate = obj.p.reader.FrameRate; % very imp
             open(vid_out);
-            i=0; obj.p.reader.CurrentTime = 0;
+            i=1; obj.p.reader.CurrentTime = 0;
             fprintf('Start of binarization...'); tstart = tic;
             while hasFrame(obj.p.reader) && i <= round(obj.p.reader.FrameRate*(obj.p.reader.Duration-1./obj.p.reader.FrameRate))
                 f = readFrame(obj.p.reader);
@@ -90,12 +107,35 @@ classdef VideoAnalysis < handle
                 bw = bwareaopen(( imbinarize(rgb2gray(f),'global')), obj.p.connectivity);
                 bw = edge(~bwareaopen(~bw, obj.p.connectivity), 'Sobel');
                 writeVideo(vid_out, double(bw));
+                
+                % i = frame munber; j = column index;
+                if choice_front_extr == 'Y' || choice_front_extr == 'y' % get h(x, t) 
+                    for j=1:size(bw, 2) % cycle over x of front
+                        col = bw(:, j); % get the single vertical columns
+                        if ~any(col)
+                            fprintf('*** Column %i of frame %i without any point!! ***!!!\n', j, i)
+                            obj.h(j, i) = obj.h(j-1, 1);
+                            fprintf('*** Replaced with neighbour value of %i, finger crossed, will fail for the first column***\n', obj.h(j-1, 1))
+                        else
+                            if sum(col)>1
+                                fprintf('In column %i of frame %i there are %i points\n', j, i, sum(col))
+                            end
+                            obj.h(j, i) = mean(find(col==1)); % take the mean value of the front points
+ 
+                        end
+                    end
+                end
                 i = i+1;
             end
             close(vid_out); tend = toc(tstart); 
             fprintf('... finished successfully in %3.1f s.\nEnjoy :)\n', tend)
+            choice = input('Do you want to save h(x,t) and all the class information (p, options) in ' + obj.p.path_analysis + obj.p.name_analysis + ' (Y/n)\nIn: ','s');
+            if choice == 'Y' || choice == 'y'
+                obj.save_class_variables()
+            end
+            end
         end
-        end
+
 
         function plot_test_binarization_and_front_extraction(obj, f, frame_title)
         % function that plots the frame, then grayscale, RGB, then
@@ -134,6 +174,18 @@ classdef VideoAnalysis < handle
         xlabel('pixel, x'); ylabel('fornt position (pixel, h(x))')
         end
     
+        function save_class_variables(obj)
+        % save p, h in obj.p.full_path_analysis
+            if exist(obj.p.full_path_analysis, 'file') 
+                fprintf('%s already exists, IT WILL BE OVERWRITTEN\n', obj.p.full_path_analysis)
+            end
+            % ugly but necessary cause Matlab requires local variables
+            h = obj.h; 
+            p = obj.p; 
+            save(char(obj.p.full_path_analysis), 'h', 'p')
+            clearvars 'h' 'p'
+        end
+        
         function crop_video_in_space(obj)
             %% this function allows to crop the video in space coordinates
             % INTERACTIVELY!!
@@ -198,6 +250,7 @@ classdef VideoAnalysis < handle
         
         function crop_video_in_time(obj)
         %% this functions allows to interactively crop a video in time
+        % and save the cropped video in _ct.avi file
         video_first_frame = 0;
         video_last_frame = obj.p.reader.NumFrames;
         satisfied = false;
