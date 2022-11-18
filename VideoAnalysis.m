@@ -16,33 +16,44 @@ classdef VideoAnalysis < handle
         p % p == parameters, stores all video metadata (size, framerate, etc),
             % the instance of the VideoReader class that further containts all the size, framerate, etc etc
         opt % stores options of the class
-        h % h(x, t) matrix, matrix of the front height; size(h, 1) = orizonthal length of the frame;
-        % size(h, 2) = obj.p.reader.NumFrames, i.e. the number of frames of
-        % the video
+        h   % h(x, t) matrix, matrix of the front height; size(h, 1) = orizonthal length of the frame;
+            % size(h, 2) = obj.p.reader.NumFrames, i.e. the number of frames of
+            % the video
+        x   % x coordinate of the front; at the moment is in number of pixel, can be converted to mm;
+            % it will be =1:size(h, 1)
+        t   % time vector as (1:obj.p.reader.NumFrames ) */ obj.p.reader.FrameRate
+        W   % Waiting time = cumulative sum of all the binarize frames. Has the size of the frame itself.
     end
 
     methods
         function obj = VideoAnalysis( video_name_and_path, options)
             arguments
                 video_name_and_path     string
-                options.SaveFrontVideo  logical=true % by default, will save the front video for visual inspection
                 options.Verbose         logical=false % print tons of extra stuff for debugging
-                options.Reload          logical=true % reload the class itself, if it alraady exists in folder VideoAnalysis_classes
+                options.Reload          logical=false % reload the class itself, if it already exists in folder VideoAnalysis_classes
             end
+            % paths of video and output .mat files, .eps files
             fprintf('Init of video %s\t', video_name_and_path)
             obj.p.name_and_path = video_name_and_path; % save full path
             [obj.p.filepath, obj.p.name, obj.p.ext] = fileparts(video_name_and_path); % save video struct
             obj.p.path_analysis = './fronts/' + obj.p.name + '/';
             obj.p.name_analysis = obj.p.name + '.mat'; % file to save h(x,t) and all class information
             obj.p.full_path_analysis = obj.p.path_analysis + obj.p.name_analysis;
-            obj.opt.SaveFrontVideo = options.SaveFrontVideo;
-            obj.opt.Verbose = options.Verbose;
+            obj.p.full_path_figures = obj.p.path_analysis + obj.p.name + '.pdf'; % path to store .eps figures
             if ~isfile(obj.p.name_and_path) % check existance
                 fprintf('Given video does not exists!\nAhooo!\n')
             end
             obj.p.reader = VideoReader(obj.p.name_and_path);
+            
+            % options
+            obj.opt.Verbose = options.Verbose;
+            obj.opt.Reload = options.Reload;
+ 
             if obj.opt.Verbose % print all video Reader info
                 obj.p.reader
+            end
+            if obj.opt.Reload % then just re-load the .mat without goind through a new binarization!
+                obj.load_class_variables()
             end
             fprintf('...done\n')
         end
@@ -85,6 +96,10 @@ classdef VideoAnalysis < handle
         if choice_front_extr == 'Y' || choice_front_extr == 'y' % initialize h(x, t) and appropriate folder
             obj.h = zeros([size(f, 2), obj.p.reader.NumFrames], 'uint64');
             fprintf('h matrix is %i * %i wide (oriz. pixel length * NumFrames)\n', size(obj.h, 1), size(obj.h, 2))
+            obj.x = 1:size(obj.h, 1); % initialize the x vector
+            obj.t = (1:obj.p.reader.NumFrames)./obj.p.reader.FrameRate; % define the time vector
+            obj.W = zeros(size(rgb2gray(f)), 'uint32');
+            size(obj.W) % Initialize the waiting time matrix
             if ~exist(obj.p.path_analysis, 'dir') % make a folder to store h(x, t) etc etc
                 mkdir(obj.p.path_analysis)
                 fprintf('Folder %s not found, made a new one.\n', obj.p.path_analysis)
@@ -100,14 +115,14 @@ classdef VideoAnalysis < handle
             open(vid_out);
             i=1; obj.p.reader.CurrentTime = 0;
             fprintf('Start of binarization...'); tstart = tic;
-            while hasFrame(obj.p.reader) && i <= round(obj.p.reader.FrameRate*(obj.p.reader.Duration-1./obj.p.reader.FrameRate))
+            while hasFrame(obj.p.reader) && i <= obj.p.reader.NumFrames 
                 f = readFrame(obj.p.reader);
                 % here I do the binarization + Sobel; less lines => much
                 % faster
                 bw = bwareaopen(( imbinarize(rgb2gray(f),'global')), obj.p.connectivity);
                 bw = edge(~bwareaopen(~bw, obj.p.connectivity), 'Sobel');
                 writeVideo(vid_out, double(bw));
-                
+                obj.W = obj.W + uint32(bw); % update the waiting time matrix
                 % i = frame munber; j = column index;
                 if choice_front_extr == 'Y' || choice_front_extr == 'y' % get h(x, t) 
                     for j=1:size(bw, 2) % cycle over x of front
@@ -176,14 +191,34 @@ classdef VideoAnalysis < handle
     
         function save_class_variables(obj)
         % save p, h in obj.p.full_path_analysis
+        % always called at the end of binarize_video()
             if exist(obj.p.full_path_analysis, 'file') 
                 fprintf('%s already exists, IT WILL BE OVERWRITTEN\n', obj.p.full_path_analysis)
             end
             % ugly but necessary cause Matlab requires local variables
             h = obj.h; 
             p = obj.p; 
-            save(char(obj.p.full_path_analysis), 'h', 'p')
-            clearvars 'h' 'p'
+            x = obj.x; t = obj.t;
+            W = obj.W; 
+            save(char(obj.p.full_path_analysis), 'h', 'p', 'x', 't', 'W')
+            clearvars 'h' 'p' 'x' 't' 'W'
+            fprintf('h(x, t), p, x, t, W WRITTEN to %s\n', obj.p.full_path_analysis)
+        end
+        
+        function load_class_variables(obj)
+        % loads h, p from the appropriate .mat file in the /front
+        % folder.
+        % the idea is that you don't have to binarize the video every time
+        % you want to re-load the front h(x, t)
+            if ~exist(obj.p.full_path_analysis, 'file') 
+                fprintf('Loading from %s, but the file does not exists!! Fail!!\n', obj.p.full_path_analysis)
+                return
+            end
+            load(char(obj.p.full_path_analysis), 'h', 'p', 'x', 't')
+            obj.h = h; obj.p = p; obj.x = x; obj.t = t;
+            obj.W = W;
+            clearvars 'h' 'p' 'x' 't' 'W'
+            fprintf('h(x, t), p, x, t, W LOADED from %s\n', obj.p.full_path_analysis)
         end
         
         function crop_video_in_space(obj)
@@ -305,23 +340,31 @@ classdef VideoAnalysis < handle
         
         close all;
         end
-        %         
+        
+        function plot_h_front(obj)
+        %% this function plot h(x, t):
+        % <h(x, t)>_x: avg over space, vs time
+        % <h(x, t>_t: avg over time, vs space
+        % all the h(x, t) toghether
+        % Waiting time W??
+
+        fprintf('Plotting the front, it will be SAVED too in %s\n', obj.p.full_path_figures)
+        
+        figure
+        subplot(2, 2, 1); plot(obj.t, mean(obj.h, 1), '-*r', 'LineWidth', 3); xlabel('time (s)'); ylabel('<h(x, t)>_x (pixels)'); title('mean height vs TIME, avg in space')
+        subplot(2, 2, 2); plot(obj.x, mean(obj.h, 2), '-*r', 'LineWidth', 3); xlabel('space (pixels)'); ylabel('<h(x, t)>_t (pixels)'); title('mean height vs SPACE, avg in time')
+        subplot(2, 2, 3); plot(obj.x, obj.h, 'LineWidth', 0.5); xlabel('space (pixels)'); ylabel('h(x, t) (pixels)'); title('all h(x, t) in time vs SPACE')
+        subplot(2, 2, 4); imagesc(obj.W); title('Waiting time matrix')
+        saveas(gcf, char(obj.p.full_path_figures), 'pdf')
+        end
+        
+        
         function get_pixel_density(obj)
         %% calibrate the space coordinates with an appropriate 
         % pixel -> m conversion factor
         % space coordinates in meters, we love SI!!
         end
 
-        function save_VideoAnalysis_class(obj)
-        %% save this own class in a .mat file in the VideoAnalysis_classes
-        % folder
-        end
 
-        function load_VideoAnalysis_class(obj)
-        %% load this own class, looking at the appropriate .mat file in the
-        % VideoAnalysis_classes folder
-        % s.t. you do not have to re-do the whole analysis
-        end
-    
     end
 end
