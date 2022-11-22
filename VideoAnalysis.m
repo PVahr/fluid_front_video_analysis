@@ -139,6 +139,8 @@ classdef VideoAnalysis < handle
                             if sum(col)>1
                                 fprintf('In column %i of frame %i there are %i points\n', j, i, sum(col))
                             end
+                            % I substract the size of the frame to make it
+                            % go upward
                             obj.h(j, i) = size(f, 1) - mean(find(col==1)); % take the mean value of the front points
                             obj.W(round(size(f, 1) - obj.h(j, i)), j) = obj.W(size(f, 1) - round(obj.h(j, i)), j) + 1; % add "1" to the front point of W
  
@@ -373,10 +375,26 @@ classdef VideoAnalysis < handle
         fshift = (-N/2:N/2-1)/(N); % zero-centered frequency range, in 'pixel_density_unit^-1'
         q = 2*pi*fshift;         %wave-vector range
         
-        S_time_avg = mean( abs(fftshift(fft(uint32(obj.h), [], 2))), 2 ); % nomaliz is missing!! some 1/N
 
+        sq_avg = zeros([size(obj.h, 1), 1]);
         figure
-        plot(q, S_time_avg)
+        for i=1:size(obj.h, 1)
+            col = uint32(obj.h(:, i));
+            sq_ith = abs(fftshift(fft(col)));
+            subplot(1, 2, 1)
+            plot( sq_ith, 'LineWidth', 0.5); hold on;
+            subplot(1, 2, 2)
+            loglog( sq_ith, 'LineWidth', 0.5); hold on;
+            sq_avg = sq_avg + sq_ith;
+        end
+        sq_avg = sq_avg / size(obj.h, 2);
+        subplot(1, 2, 1)
+        plot(sq_avg, 'r', 'LineWidth', 3)
+        title('S(q), no x units, lin lin, pos and neg frequencies')
+        subplot(1, 2, 2)
+        loglog(sq_avg, 'r', 'LineWidth', 3)
+        title('S(q), no x units, log log, pos and neg frequencies')
+        
 %         S_time_avg = zeros(size(fshift), 'double');  
 %         S_time_ev = zeros(size(fname,1), N, 'double');
 %         C_diff_time_avg = zeros(size(fshift), 'double');  
