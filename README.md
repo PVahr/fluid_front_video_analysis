@@ -8,24 +8,25 @@ The code also get the 'waiting time amatrix', W, which is a cumulative sum of al
 
 The code also allows to crop the video in space or in time 'interactively', quite an handy feature.
 
-## Input: a video of a 2d front that evolves in time 
-## Options:
-      Verbose = true/false; if true, print and plot a lot of very usefull stuff to check if the binarization of the video is correct
-      Reload = true/false; if true, reload the front matrix h(x, t) and other variables from the appropriate .mat file stored in ./fronts/DSC_xxx/DSC_xxx/.mat              
+### Input
+a video of a 2d front that evolves in time 
+### Options:
+* Verbose = true/false; if true, print and plot a lot of very usefull stuff to check if the binarization of the video is correct
+* Reload = true/false; if true, reload the front matrix h(x, t) and other variables from the appropriate .mat file stored in ./fronts/DSC_xxx/DSC_xxx/.mat              
 
-## Output:
+### Output:
 * the binarized video that contains the front only, in ./vid/xxx_bin.xxx
 * a vector h(x) with the front, that evolves in time and is stored like a 2d matrix h(x, t); the waiting time matrix W and their x and t vector; the parameters of the video (path, VideoReader object, etc) stored as a small class  named p. All these variables are saved in ./fronts/vid_name/vid_name.mat
 * optional: a video cropped in space, in ./vid/xxx_c.xxx
 * optional: a video cropped in time, in ./vid/xx_ct.xxx
 * optional: plotting of the h(x, t), averaged in different ways, and W; The plots are also saved in a .pdf in ./vid/xxx/xxx.pdf
 
-## Code structure:
+### Code structure:
 * class VideoAnalysis.m: main class that does everything. Call the different methods of the class to binarize the video, cropt it interactively in space and/or time, save the binarize video and the front h(x,t) and do the power spectra analysis
 * a test_main file to test the VideoAnalysis class, where you will find examples on how to use it
 * in /vid/ folder there are 2 videos to be used as a test
 
-## Notes:
+### Notes:
 * binarization is done with ''imbinarize'' using 'global' method; may not work for your case, if so tweak it till works.
 * a violent "bwareaopen' function is applied, with a connectivity parameter of 20 000 or so. This works great to remove everything that is not the front itself, but may fail for your own specific video. If so, tweak it.
 * edge detection is done with the ''edge'' function of Matlab, using the standard 'sobel' method. Works for my video, but it might fail in your case; if so, tweak it till it works.
@@ -33,7 +34,7 @@ The code also allows to crop the video in space or in time 'interactively', quit
 * may fail on Windows due to wrong paths (/ instad of \, tested on Linux only)
 * there is currently no background substraction 
 
-# Usage example
+### Usage example
 With Verbose = true, you can call binarize_video() and you will see all the different stages of the binarization steps, for the first, middle, last frames (here only the last one):
 ![Screenshot](docs_pics/bin_check.png) 
 
@@ -50,7 +51,7 @@ This is the hand cropping in time of the video, based on the frame number:
 ![Screenshot](docs_pics/interactive_time_cropping.png)
 
 
-# TODO/bugs
+### TODO/bugs
 * h(x, t) is FLIPPED upside down, but the fronts are not. Probably because the imshow starts by defauly in the top left corner instead that in the bottom eft; easy fix
 * the compute_and_plot_power_spectrum() function is garbage at the moment
 * the 'get_pixel_density()' is not implemented 
