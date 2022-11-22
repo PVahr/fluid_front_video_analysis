@@ -222,7 +222,7 @@ classdef VideoAnalysis < handle
                 fprintf('Loading from %s, but the file does not exists!! Fail!!\n', obj.p.full_path_analysis)
                 return
             end
-            load(char(obj.p.full_path_analysis), 'h', 'p', 'x', 't')
+            load(char(obj.p.full_path_analysis), 'h', 'p', 'x', 't', 'W')
             obj.h = h; obj.p = p; obj.x = x; obj.t = t;
             obj.W = W;
             clearvars 'h' 'p' 'x' 't' 'W'
@@ -407,6 +407,10 @@ classdef VideoAnalysis < handle
         subplot(2, 2, 3); plot(obj.x, obj.h, 'LineWidth', 0.5); xlabel('space (pixels)'); ylabel('h(x, t) (pixels)'); title('all h(x, t) in time vs SPACE')
         subplot(2, 2, 4); imagesc(obj.W); title('Waiting time matrix')
         saveas(gcf, char(obj.p.full_path_figures), 'pdf')
+        
+        
+        figure
+        plot(obj.t, std(obj.h, 1)); title('Std of the front VS time')
         end
         
         function compute_and_plot_power_spectrum(obj)
