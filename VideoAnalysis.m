@@ -125,7 +125,8 @@ classdef VideoAnalysis < handle
                 bw = bwareaopen(( imbinarize(rgb2gray(f),'global')), obj.p.connectivity);
                 bw = edge(~bwareaopen(~bw, obj.p.connectivity), 'Sobel');
                 writeVideo(vid_out, double(bw));
-                obj.W = obj.W + uint32(bw); % update the waiting time matrix
+%                 obj.W = obj.W + uint32(bw); % update the waiting time
+%                 matrix, but this is WRONG AS I AM NOT TAKING AVGS
                 % i = frame munber; j = column index;
                 if choice_front_extr == 'Y' || choice_front_extr == 'y' % get h(x, t) 
                     for j=1:size(bw, 2) % cycle over x of front
@@ -138,7 +139,8 @@ classdef VideoAnalysis < handle
                             if sum(col)>1
                                 fprintf('In column %i of frame %i there are %i points\n', j, i, sum(col))
                             end
-                            obj.h(j, i) = mean(find(col==1)); % take the mean value of the front points
+                            obj.h(j, i) = size(f, 1) - mean(find(col==1)); % take the mean value of the front points
+                            obj.W(round(size(f, 1) - obj.h(j, i)), j) = obj.W(size(f, 1) - round(obj.h(j, i)), j) + 1; % add "1" to the front point of W
  
                         end
                     end
@@ -365,7 +367,7 @@ classdef VideoAnalysis < handle
         function compute_and_plot_power_spectrum(obj)
         %% this function computes the time-averaged power spectrum of the
         % front
-        fpritnf('*** Not implemented correctly yet! ***\n')
+        fprintf('*** Not implemented correctly yet! ***\n')
         N = size(obj.h, 1);        
         lags = (-N/2:N/2-1); %%lags, in pixel units
         fshift = (-N/2:N/2-1)/(N); % zero-centered frequency range, in 'pixel_density_unit^-1'
