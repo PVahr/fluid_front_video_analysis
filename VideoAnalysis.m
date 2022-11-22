@@ -1,19 +1,23 @@
 %% Class that handles a single video. By default, handles the video 
-% metadata and the further analysis done/to be done on it.
-% the idea is to check automatically if the vidoe analysis already exist,
-% to easily invoke it at later stages.
+% metadata (path, VideoReader object, etc) and the further analysis done/to be done on it.
 
 % usage 
 % myvid = VideoAnalysis(video_name_and_path, options)
 % video_name_and_path = relative path to the video + name of the
-%                       video with extension, like ./vid/DSC_XXXX.avi
+%                       video with extension, like ./vid/DSC_XXXX.xxx
 %                       (May fail on Windows due to \ instead of / )
-% options.SaveFrontVideo    will save the front video for visual inspection in
-%                          ./vid folder, named like DSC_XXXX_front.avi
+% options.Verbose       will give you a ton of plots; especially important
+%                       when binarizing for the first time
+% options.Reload        will reload the front h(x, t), the waiting time
+%                       matrix W, the VideoReader object, the time and 
+%                       space vectors t and x from the file in 
+%                        ./fronts/DSC_XXX/DSC_XXX.mat 
+%                       "DSC_xxx" with a Nikon camera, can be whatever
+%                       string
 
 classdef VideoAnalysis < handle 
     properties
-        p % p == parameters, stores all video metadata (size, framerate, etc),
+        p   % p == parameters, stores all video metadata (size, framerate, etc),
             % the instance of the VideoReader class that further containts all the size, framerate, etc etc
         opt % stores options of the class
         h   % h(x, t) matrix, matrix of the front height; size(h, 1) = orizonthal length of the frame;
@@ -61,7 +65,7 @@ classdef VideoAnalysis < handle
         function binarize_video(obj)
         %% this function binarize the video (imbinarize, bwareaopen, edge 
         % detection with Sobel), and saves it in vid/xxx_bin.avi
-        % WILL FAIL FOR VIDEOS IN GRAYSCALE ALREADY
+        % *** will fail if the video is NOT in RGB (if so, removed 'rgb2gray' everywhere)  ***
         obj.p.connectivity = 20000; % connectivity for bwareaopen is defined here
 
         % first, plot all the steps separately IF Verbose
@@ -71,7 +75,7 @@ classdef VideoAnalysis < handle
         % fig4: cleaned up x, y of the front
         obj.p.reader.CurrentTime = 0.; % ugly, I need f later to initialize h(x, t) correctly
         f = readFrame(obj.p.reader);
-        if obj.opt.Verbose
+        if obj.opt.Verbose % we do the plotting
             % first frame binarization check
             obj.p.reader.CurrentTime = 0.;
             f = readFrame(obj.p.reader);
@@ -98,8 +102,7 @@ classdef VideoAnalysis < handle
             fprintf('h matrix is %i * %i wide (oriz. pixel length * NumFrames)\n', size(obj.h, 1), size(obj.h, 2))
             obj.x = 1:size(obj.h, 1); % initialize the x vector
             obj.t = (1:obj.p.reader.NumFrames)./obj.p.reader.FrameRate; % define the time vector
-            obj.W = zeros(size(rgb2gray(f)), 'uint32');
-            size(obj.W) % Initialize the waiting time matrix
+            obj.W = zeros(size(rgb2gray(f)), 'uint32'); % Initialize the waiting time matrix
             if ~exist(obj.p.path_analysis, 'dir') % make a folder to store h(x, t) etc etc
                 mkdir(obj.p.path_analysis)
                 fprintf('Folder %s not found, made a new one.\n', obj.p.path_analysis)
@@ -156,7 +159,7 @@ classdef VideoAnalysis < handle
         % function that plots the frame, then grayscale, RGB, then
         % the binarize frame, then bin + bwareopen, then front
         % extraction
-        figure; sgtitle(strcat(frame_title, 'frame'));
+        figure; sgtitle(strcat(frame_title, ' frame'));
         subplot(2, 1, 1); montage({f, rgb2gray(f)}) % original, grayscale
         title('original, grayscale')
         subplot(2, 1, 2); montage({f(:, :, 1), f(:, :, 2), f(:, :, 3)}, 'Size', [1, 3]) % R, G, B channels separately
@@ -190,8 +193,9 @@ classdef VideoAnalysis < handle
         end
     
         function save_class_variables(obj)
-        % save p, h in obj.p.full_path_analysis
+        % save p, h, etc in obj.p.full_path_analysis
         % always called at the end of binarize_video()
+        % also called in the constructor when given opt.Reload = true
             if exist(obj.p.full_path_analysis, 'file') 
                 fprintf('%s already exists, IT WILL BE OVERWRITTEN\n', obj.p.full_path_analysis)
             end
@@ -201,12 +205,12 @@ classdef VideoAnalysis < handle
             x = obj.x; t = obj.t;
             W = obj.W; 
             save(char(obj.p.full_path_analysis), 'h', 'p', 'x', 't', 'W')
-            clearvars 'h' 'p' 'x' 't' 'W'
+            clearvars 'h' 'p' 'x' 't' 'W'   % less ugly
             fprintf('h(x, t), p, x, t, W WRITTEN to %s\n', obj.p.full_path_analysis)
         end
         
         function load_class_variables(obj)
-        % loads h, p from the appropriate .mat file in the /front
+        % loads h, p, etc from the appropriate .mat file in the /front
         % folder.
         % the idea is that you don't have to binarize the video every time
         % you want to re-load the front h(x, t)
@@ -346,7 +350,7 @@ classdef VideoAnalysis < handle
         % <h(x, t)>_x: avg over space, vs time
         % <h(x, t>_t: avg over time, vs space
         % all the h(x, t) toghether
-        % Waiting time W??
+        % Waiting time W
 
         fprintf('Plotting the front, it will be SAVED too in %s\n', obj.p.full_path_figures)
         
@@ -356,6 +360,31 @@ classdef VideoAnalysis < handle
         subplot(2, 2, 3); plot(obj.x, obj.h, 'LineWidth', 0.5); xlabel('space (pixels)'); ylabel('h(x, t) (pixels)'); title('all h(x, t) in time vs SPACE')
         subplot(2, 2, 4); imagesc(obj.W); title('Waiting time matrix')
         saveas(gcf, char(obj.p.full_path_figures), 'pdf')
+        end
+        
+        function compute_and_plot_power_spectrum(obj)
+        %% this function computes the time-averaged power spectrum of the
+        % front
+        fpritnf('*** Not implemented correctly yet! ***\n')
+        N = size(obj.h, 1);        
+        lags = (-N/2:N/2-1); %%lags, in pixel units
+        fshift = (-N/2:N/2-1)/(N); % zero-centered frequency range, in 'pixel_density_unit^-1'
+        q = 2*pi*fshift;         %wave-vector range
+        
+        S_time_avg = mean( abs(fftshift(fft(uint32(obj.h), [], 2))), 2 ); % nomaliz is missing!! some 1/N
+
+        figure
+        plot(q, S_time_avg)
+%         S_time_avg = zeros(size(fshift), 'double');  
+%         S_time_ev = zeros(size(fname,1), N, 'double');
+%         C_diff_time_avg = zeros(size(fshift), 'double');  
+%         C_diff_time_ev = zeros(size(fname,1), N, 'double');
+% 
+%         single_return = zeros(1,N);
+%         multi_return = zeros(1,N);
+%         total_time = 0; %%hold the total time, in seconds
+
+
         end
         
         
