@@ -52,7 +52,6 @@ This is the hand cropping in time of the video, based on the frame number:
 
 
 ### TODO/bugs
-* h(x, t) is FLIPPED upside down, but the fronts are not. Probably because the imshow starts by defauly in the top left corner instead that in the bottom eft; easy fix
 * the compute_and_plot_power_spectrum() function is garbage at the moment
 * the 'get_pixel_density()' is not implemented 
 
