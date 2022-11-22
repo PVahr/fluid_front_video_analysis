@@ -197,7 +197,7 @@ classdef VideoAnalysis < handle
         end
     
         function save_class_variables(obj)
-        % save p, h, etc in obj.p.full_path_analysis
+        %% save p, h, etc in obj.p.full_path_analysis
         % always called at the end of binarize_video()
         % also called in the constructor when given opt.Reload = true
             if exist(obj.p.full_path_analysis, 'file') 
@@ -214,7 +214,7 @@ classdef VideoAnalysis < handle
         end
         
         function load_class_variables(obj)
-        % loads h, p, etc from the appropriate .mat file in the /front
+        %% loads h, p, etc from the appropriate .mat file in the /front
         % folder.
         % the idea is that you don't have to binarize the video every time
         % you want to re-load the front h(x, t)
@@ -401,16 +401,38 @@ classdef VideoAnalysis < handle
 
         fprintf('Plotting the front, it will be SAVED too in %s\n', obj.p.full_path_figures)
         
-        figure
-        subplot(2, 2, 1); plot(obj.t, mean(obj.h, 1), '-*r', 'LineWidth', 3); xlabel('time (s)'); ylabel('<h(x, t)>_x (pixels)'); title('mean height vs TIME, avg in space')
-        subplot(2, 2, 2); plot(obj.x, mean(obj.h, 2), '-*r', 'LineWidth', 3); xlabel('space (pixels)'); ylabel('<h(x, t)>_t (pixels)'); title('mean height vs SPACE, avg in time')
-        subplot(2, 2, 3); plot(obj.x, obj.h, 'LineWidth', 0.5); xlabel('space (pixels)'); ylabel('h(x, t) (pixels)'); title('all h(x, t) in time vs SPACE')
-        subplot(2, 2, 4); imagesc(obj.W); title('Waiting time matrix')
+%         figure
+%         subplot(2, 2, 1); plot(obj.t, mean(double(obj.h), 1), '-r', 'MarkerSize', 1, 'LineWidth', 3); hold on;
+%          xlabel('time (s)'); ylabel('<h(x, t)>_x (pixels)'); title('mean height vs TIME, avg in space')
+%         subplot(2, 2, 2); plot(obj.x, mean(obj.h, 2), '-r', 'LineWidth', 3); xlabel('space (pixels)'); ylabel('<h(x, t)>_t (pixels)'); title('mean height vs SPACE, avg in time')
+% %       
+%         subplot(2, 2, 4); imagesc(obj.W); title('Waiting time matrix')
+%         
+        figure; sgtitle('Front averaged in SPACE')
+        subplot(2, 2, 1); 
+        plot(obj.t, mean(double(obj.h), 1), '-r', 'MarkerSize', 1, 'LineWidth', 3, 'DisplayName', '<h(x, t)>_x'); hold on; % std +- mean
+        plot(obj.t, mean(double(obj.h), 1) + std(double(obj.h), 0, 1), '--k', 'LineWidth', 1, 'DisplayName', '+ 1 std')
+        plot(obj.t, mean(double(obj.h), 1) - std(double(obj.h), 0, 1), '--k', 'LineWidth', 1, 'DisplayName', '- 1 std')
+        ylabel('Height (pixels)'); xlabel('time (s)'); legend; title('mean +- std of the front VS time');
+        subplot(2, 2, 3); plot(obj.t, std(double(obj.h), 0, 1), 'k-', 'LineWidth', 3); % std 
+        ylabel('Std (pixels)'); xlabel('time (s)'); title('Std of the front VS time');
         saveas(gcf, char(obj.p.full_path_figures), 'pdf')
         
-        
-        figure
-        plot(obj.t, std(obj.h, 1)); title('Std of the front VS time')
+        figure; sgtitle('Front averaged in TIME')
+        subplot(2, 2, 1);
+        plot(obj.x, mean(obj.h, 2), '-r', 'LineWidth', 3, 'DisplayName', '<h(x, t)>_t'); hold on;
+        plot(obj.x, mean(double(obj.h), 2) + std(double(obj.h), 0, 2), '--k', 'LineWidth', 1, 'DisplayName', '+ 1 std')
+        plot(obj.x, mean(double(obj.h), 2) - std(double(obj.h), 0, 2), '--k', 'LineWidth', 1, 'DisplayName', '- 1 std')
+        legend;  xlabel('space (pixels)'); ylabel('<h(x, t)>_t (pixels)'); title('mean height vs SPACE, avg in time')
+        subplot(2, 2, 3); imagesc(obj.W); title('Waiting time matrix')
+        subplot(2, 2, 2); plot(obj.x, obj.h, 'LineWidth', 0.5); xlabel('space (pixels)'); ylabel('h(x, t) (pixels)'); title('all h(x, t) in time vs SPACE')
+        subplot(2, 2, 4);
+        for i=1:size(obj.h, 2)
+            if mod(i, 40) == 0
+                plot(obj.x, obj.h(:, i), '-k', 'LineWidth', 1); hold on;
+            end
+        end
+        xlabel('space (pixels)'); ylabel('h(x, t) at selected t (pixels)');
         end
         
         function compute_and_plot_power_spectrum(obj)
