@@ -344,9 +344,52 @@ classdef VideoAnalysis < handle
             close(vid_out);
             fprintf('Time-cropped video generated and saved correctly. Enjoy :)\n')
         end
-
-        
         close all;
+        end
+        
+        function speed_up_the_video(obj)
+        %% this function speeds up the video of a given factor
+        % very useful for presentation purposes
+        % The new, faster video will have the exact same frame rate as the
+        % original one, but with less frames. In this way you can make it
+        % very fast, up to 10x or more faster, without going to extremely
+        % high fps that would then not display correctly.
+        % There is clearly an entropy loss in this process, so may not be
+        % good for data analysis.
+        % There will also be a "fake" timescale then, the real analysis 
+        % must always be done on the original video. 
+        fprintf('The original video has a FrameRate of %g fps, rounded to %g fps.\n', obj.p.reader.FrameRate, round(obj.p.reader.FrameRate) )
+        new_fps = input('Insert the new Frame Rate you want. IT MUST BE AN INTEGER MULTIPLE OF THE ORIGINAL, ROUNDED FRAMERATE.\n');
+
+        if mod(new_fps, round(obj.p.reader.FrameRate)) ~= 0 % check if wrong fps
+            fprintf('Wrong input, framerates are not integer multiples.\n')
+            return % ugly?
+        end
+        name_speedup_video = obj.p.name + '_speedup_' + string( round(new_fps/round(obj.p.reader.FrameRate)) ) + 'x'; % name of new video
+        choice = input('Do you want to create a new video named ' + name_speedup_video  + ' ? (Y/n)\nIn: ','s');
+        if choice == 'Y' || choice == 'y' % create the new, faster video
+            if isfile(obj.p.filepath + '/' + name_speedup_video + '.avi')
+                fprintf('*** The speed-up video already exists, IT WILL BE OVERWRITTEN RIP BUONANOTTE CIAO ***\n')
+            end
+            % write the new video
+            vid_out = VideoWriter(obj.p.filepath + '/' + name_speedup_video, 'Motion JPEG AVI');
+            vid_out.FrameRate = obj.p.reader.FrameRate; % very imp
+            open(vid_out);
+            i=0; obj.p.reader.CurrentTime = 0; % start at the new frame
+            while hasFrame(obj.p.reader)
+                f = readFrame(obj.p.reader);
+                if mod(i, round(new_fps/round(obj.p.reader.FrameRate)) ) == 0 % then, I write the new frame
+                    writeVideo(vid_out, f);
+                end
+                if mod(i, 300) == 0 
+                    fprintf('Processed 300 more frames.\n')
+                end
+                i = i+1;
+            end
+            close(vid_out);
+            fprintf('Faster video generated and saved correctly. Enjoy :)\n')
+        end
+        
         end
         
         function plot_h_front(obj)
