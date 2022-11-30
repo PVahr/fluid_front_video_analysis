@@ -9,30 +9,33 @@ The code also get the 'waiting time amatrix', W, which is a cumulative sum of al
 The code also allows to crop the video in space or in time 'interactively', quite an handy feature.
 
 ### Input
-a video of a 2d front that evolves in time 
+a video of a 2d front that evolves in time, or better the relative path to it. Test videos are in ./vid/xxx.avi.
 ### Options:
 * Verbose = true/false; if true, print and plot a lot of very usefull stuff to check if the binarization of the video is correct
-* Reload = true/false; if true, reload the front matrix h(x, t) and other variables from the appropriate .mat file stored in ./fronts/DSC_xxx/DSC_xxx/.mat              
+* Reload = true/false; if true, reload the front matrix h(x, t) and other variables from the appropriate .mat file stored in ./fronts/xxx/xxx/.mat              
 
 ### Output:
 * the binarized video that contains the front only, in ./vid/xxx_bin.xxx
-* a vector h(x) with the front, that evolves in time and is stored like a 2d matrix h(x, t); the waiting time matrix W and their x and t vector; the parameters of the video (path, VideoReader object, etc) stored as a small class  named p. All these variables are saved in ./fronts/vid_name/vid_name.mat
-* optional: a video cropped in space, in ./vid/xxx_c.xxx
-* optional: a video cropped in time, in ./vid/xx_ct.xxx
+* a vector h(x) with the front, that evolves in time and is stored like a 2d matrix h(x, t); the waiting time matrix W and their x and t vector; the parameters of the video (path, VideoReader object, etc) stored as a small class  named p. All these variables are saved in ./fronts/xxx/xxx.mat
+* optional: a video cropped in space, in ./vid/xxx_c.avi
+* optional: a video cropped in time, in ./vid/xxx_ct.avi
+* optional: a video speeded up of a factor, f, in ./vid/xxx_speedup_fx.avi; mainly for presentations purposes
 * optional: plotting of the h(x, t), averaged in different ways, and W; The plots are also saved in a .pdf in ./vid/xxx/xxx.pdf
 
 ### Code structure:
 * class VideoAnalysis.m: main class that does everything. Call the different methods of the class to binarize the video, cropt it interactively in space and/or time, save the binarize video and the front h(x,t) and do the power spectra analysis
 * a test_main file to test the VideoAnalysis class, where you will find examples on how to use it
-* in /vid/ folder there are 2 videos to be used as a test
+* in /vid/*.avi folder there are 2 videos to be used as a test
 
 ### Notes:
 * binarization is done with ''imbinarize'' using 'global' method; may not work for your case, if so tweak it till works.
 * a violent "bwareaopen' function is applied, with a connectivity parameter of 20 000 or so. This works great to remove everything that is not the front itself, but may fail for your own specific video. If so, tweak it.
 * edge detection is done with the ''edge'' function of Matlab, using the standard 'sobel' method. Works for my video, but it might fail in your case; if so, tweak it till it works.
 * if tweaking the above 3 points does not make it work, maybe the problem is in the video: contrast and illumination must be already good to be able to analyse them
-* may fail on Windows due to wrong paths (/ instad of \, tested on Linux only)
-* there is currently no background substraction 
+* may fail on Windows due to wrong paths (/ instad of \, tested on Linux and Mac only)
+* there is currently no background subtraction 
+* it works only for RGB videos. For videos taken in grayscale you will have to manually remove all the "rgb2gray()" functions present in the code.
+* output are quite heavily compressed .avi videos. The code is not designed/tested on .tiff or more scientific/compressionless formats.
 
 ### Usage example
 With Verbose = true, you can call binarize_video() and you will see all the different stages of the binarization steps, for the first, middle, last frames (here only the last one):
