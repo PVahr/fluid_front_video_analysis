@@ -27,6 +27,7 @@ classdef VideoAnalysis < handle
             % it will be =1:size(h, 1)
         t   % time vector as (1:obj.p.reader.NumFrames ) */ obj.p.reader.FrameRate
         W   % Waiting time = cumulative sum of all the binarize frames. Has the size of the frame itself.
+        analysis % class to hold several analysis-related variables. Runtime only, it's not saved to the .mat files
     end
 
     methods
@@ -414,9 +415,14 @@ classdef VideoAnalysis < handle
         plot(obj.t, mean(double(obj.h), 1) + std(double(obj.h), 0, 1), '--k', 'LineWidth', 1, 'DisplayName', '+ 1 std')
         plot(obj.t, mean(double(obj.h), 1) - std(double(obj.h), 0, 1), '--k', 'LineWidth', 1, 'DisplayName', '- 1 std')
         ylabel('Height (pixels)'); xlabel('time (s)'); legend; title('mean +- std of the front VS time');
-        subplot(2, 2, 3); plot(obj.t, std(double(obj.h), 0, 1), 'k-', 'LineWidth', 3); % std 
-        ylabel('Std (pixels)'); xlabel('time (s)'); title('Std of the front VS time');
-        saveas(gcf, char(obj.p.full_path_figures), 'pdf')
+        
+        subplot(2, 2, 3); plot(obj.t, std(double(obj.h), 0, 1), 'k-', 'LineWidth', 3, 'DisplayName', 'std'); hold on;% std 
+        plot(obj.t, std(double(obj.h), 0, 1) - std(double(obj.h(:, 1))), '-', 'LineWidth', 3, 'DisplayName', 'std - std at t = 0'); % std 
+        ylabel('Std (pixels)'); xlabel('time (s)'); title('Std of the front VS time - LINLIN'); legend;
+        
+        subplot(2, 2, 4); loglog(obj.t, std(double(obj.h), 0, 1), 'k-', 'LineWidth', 3, 'DisplayName', 'std'); hold on;
+        loglog(obj.t, std(double(obj.h), 0, 1) - std(double(obj.h(:, 1))), '-', 'LineWidth', 3, 'DisplayName', 'std - std at t = 0'); % std 
+        ylabel('Std (pixels)'); xlabel('time (s)'); title('Std of the front VS time - LOGLOG'); legend;
         
         figure; sgtitle('Front averaged in TIME')
         subplot(2, 2, 1);
@@ -426,56 +432,139 @@ classdef VideoAnalysis < handle
         legend;  xlabel('space (pixels)'); ylabel('<h(x, t)>_t (pixels)'); title('mean height vs SPACE, avg in time')
         subplot(2, 2, 3); imagesc(obj.W); title('Waiting time matrix')
         subplot(2, 2, 2); plot(obj.x, obj.h, 'LineWidth', 0.5); xlabel('space (pixels)'); ylabel('h(x, t) (pixels)'); title('all h(x, t) in time vs SPACE')
-        subplot(2, 2, 4);
+        subplot(2, 2, 4); title('Selected fronts')
         for i=1:size(obj.h, 2)
             if mod(i, 40) == 0
                 plot(obj.x, obj.h(:, i), '-k', 'LineWidth', 1); hold on;
             end
         end
         xlabel('space (pixels)'); ylabel('h(x, t) at selected t (pixels)');
+        saveas(gcf, char(obj.p.full_path_figures), 'pdf')
+
         end
         
         function compute_and_plot_power_spectrum(obj)
-        %% this function computes the time-averaged power spectrum of the
-        % front
-        fprintf('*** Not implemented correctly yet! ***\n')
-        N = size(obj.h, 1);        
-        lags = (-N/2:N/2-1); %%lags, in pixel units
-        fshift = (-N/2:N/2-1)/(N); % zero-centered frequency range, in 'pixel_density_unit^-1'
-        q = 2*pi*fshift;         %wave-vector range
+        %% bla
+        % obj.analysis.Sq       same size as obj.h, but the pixel length is half,
+        %                       contains the postive power spectra for every frame
+        % obj.analysis.Sq_avg   size as obj.x/2, contains the time-average power spectra
+        % obj.analysis.q        same size as x/2, contains the wavevector of
+        %                       Sq and Sq_avg
+
+        % initialize stuff correctly
+        % (note: h is in uint, Sq are double, trasformation in between)
+        N = size(obj.W, 2);                         % horizontal length of the frame
+        fshift = (-N/2:N/2-1)/N;                    % zero-centered full frequency range
+        obj.analysis.q = 2*pi*fshift( fshift>=0 );  % positive wave-vector range
+        obj.analysis.Sq = zeros(size(obj.h), 'double');
+        obj.analysis.Sq_avg = zeros(size(obj.x), 'double');
         
-
-        sq_avg = zeros([size(obj.h, 1), 1]);
-        figure
-        for i=1:size(obj.h, 1)
-            col = uint32(obj.h(:, i));
-            sq_ith = abs(fftshift(fft(col)));
-            subplot(1, 2, 1)
-            plot( sq_ith, 'LineWidth', 0.5); hold on;
-            subplot(1, 2, 2)
-            loglog( sq_ith, 'LineWidth', 0.5); hold on;
-            sq_avg = sq_avg + sq_ith;
-        end
-        sq_avg = sq_avg / size(obj.h, 2);
-        subplot(1, 2, 1)
-        plot(sq_avg, 'r', 'LineWidth', 3)
-        title('S(q), no x units, lin lin, pos and neg frequencies')
-        subplot(1, 2, 2)
-        loglog(sq_avg, 'r', 'LineWidth', 3)
-        title('S(q), no x units, log log, pos and neg frequencies')
-        
-%         S_time_avg = zeros(size(fshift), 'double');  
-%         S_time_ev = zeros(size(fname,1), N, 'double');
-%         C_diff_time_avg = zeros(size(fshift), 'double');  
-%         C_diff_time_ev = zeros(size(fname,1), N, 'double');
-% 
-%         single_return = zeros(1,N);
-%         multi_return = zeros(1,N);
-%         total_time = 0; %%hold the total time, in seconds
-
-
+        if mod( size(obj.h, 1), 2) ~= 0
+            % the x coordinate has an ODD number of pixel
+            % this can happen if the video was cropped by hand, but makes a
+            % huge mess because it must be even to define all the Fourier
+            % stuff correctly
+            fprintf('*** AHHHHHH THE NUMBER OF PIXEL IS ODD!!! *** \n*** It MUST be EVEN to define all the frequencies correctly, fix it! ***\n')
         end
         
+        % in order: convert to double, compute fft along 1st axis,
+        % apply fftshift along first axis
+        % compute absolute value of each element and square it
+        % renormalize by N
+        obj.analysis.Sq = abs( fftshift( fft( double(obj.h), [], 1), 1) ).^2./N;
+        
+        obj.analysis.Sq_avg = mean( obj.analysis.Sq, 2); % make avg over number of frames; this is the TIME avg spectra
+        
+        % cut away the negative part of the spectra. Will fail for N odd
+        obj.analysis.Sq_avg = obj.analysis.Sq_avg( N/2+1:end ); 
+        obj.analysis.Sq = obj.analysis.Sq (N/2+1:end, :); 
+        
+        q_min = 2*pi/(N); % minimu wave vector u can resolve
+        fprintf('Minimum wave vector (pixel^{-1}): %f\n', q_min);
+        
+        main_fig = figure; sgtitle('Power spectra analysis (not tilted likely scales like q^-2  because of the fft of a jump function)')
+        subplot(2, 2, 1); 
+        plot(obj.analysis.q, obj.analysis.Sq_avg, '-r', 'LineWidth', 3, 'DisplayName', '<S(q)>_t'); hold on
+        plot(obj.analysis.q, obj.analysis.Sq_avg - std(obj.analysis.Sq, 0, 2), '-', 'Color', "#A2142F", 'LineWidth', 3); alpha 0.5;
+        plot(obj.analysis.q, obj.analysis.Sq_avg, '-', 'Color', "#D95319",   'LineWidth', 3)
+        legend; xlabel('Wave vector (pixel^-1)'); ylabel('S(q) (a.u.?)')
+        title('Normal power spectra, linlin') % lin lin plot
+        
+        subplot(2, 2, 2); % log log plot
+        loglog(obj.analysis.q, obj.analysis.Sq_avg + std(obj.analysis.Sq, 0, 2), '-', 'Color', "#A2142F", 'LineWidth', 3); hold on;
+        loglog(obj.analysis.q, obj.analysis.Sq_avg - std(obj.analysis.Sq, 0, 2), '-', 'Color', "#A2142F", 'LineWidth', 3); alpha 0.5;
+        loglog(obj.analysis.q, obj.analysis.Sq_avg, '-', 'Color', "#D95319",   'LineWidth', 3)
+        legend('<S(q)>_t', '+ 1 std', '-1 std'); xlabel('Wave vector (pixel^{-1})'); ylabel('S(q) (a.u.?)')
+        title('Normal power spectra, loglog')
+
+        % here I force PERIODIC BOUNDARY CONDITIONS.
+        % a jump in the left/right coordinate can heavily fake your spectra
+        % giving a q^-2 power law scaling, which is the FFT of a step
+        % function
+        m = (double(obj.h(1, :)) - double(obj.h(end, :)) )./ size(obj.h, 1); % vector of angular coefficients
+        obj.analysis.h_tilted = double(obj.h) + obj.x'*m;
+        % en external product is going on, it's a very compact way of 
+        % substracting a linear interpolation from one side of the front 
+        % to the other, such that the two extrema match.
+        
+        figure; sgtitle('Check of titled VS original fronts to force periodc boundary conditions')
+        plot(obj.x, obj.h(:, 1), '-r', 'LineWidth', 3, 'DisplayName', 'original'); % first front
+        hold on; plot(obj.x, obj.analysis.h_tilted(:, 1), '--r', 'LineWidth', 3, 'DisplayName', 'with period boundary conditions')
+        plot(obj.x, obj.h(:, round(size(obj.h, 2)*0.5)), '-g', 'LineWidth', 3, 'DisplayName', 'original'); % middle front
+        hold on; plot(obj.x, obj.analysis.h_tilted(:, round(size(obj.h, 2)*0.5)), '--g', 'LineWidth', 3, 'DisplayName', 'with period boundary conditions')
+        plot(obj.x, obj.h(:, end), '-b', 'LineWidth', 3, 'DisplayName', 'original'); % last front
+        hold on; plot(obj.x, obj.analysis.h_tilted(:, end), '--b', 'LineWidth', 3, 'DisplayName', 'with period boundary conditions')
+        legend; xlabel('x (pixel)'); ylabel('Front (pixel)')
+
+        % now I re-compute the spectra on the tilted front
+        obj.analysis.Sq_tilted = abs( fftshift( fft( obj.analysis.h_tilted, [], 1), 1) ).^2./N;        
+        obj.analysis.Sq_avg_tilted = mean( obj.analysis.Sq_tilted, 2); % make avg over number of frames; this is the TIME avg spectra
+        % cut away the negative part of the spectra. Will fail for N odd
+        obj.analysis.Sq_avg_tilted = obj.analysis.Sq_avg_tilted( N/2+1:end ); 
+        obj.analysis.Sq_tilted = obj.analysis.Sq_tilted (N/2+1:end, :); 
+        % follows plot of tilted pw spectra
+        figure(main_fig); subplot(2, 2, 3); 
+        plot(obj.analysis.q, obj.analysis.Sq_avg_tilted, '-r', 'LineWidth', 3, 'DisplayName', '<S(q)>_t'); hold on
+        plot(obj.analysis.q, obj.analysis.Sq_avg_tilted - std(obj.analysis.Sq_tilted, 0, 2), '-', 'Color', "#A2142F", 'LineWidth', 3); alpha 0.5;
+        plot(obj.analysis.q, obj.analysis.Sq_avg_tilted, '-', 'Color', "#D95319",   'LineWidth', 3)
+        legend; xlabel('Wave vector (pixel^-1)'); ylabel('S(q) (a.u.?)')
+        title('TILTED power spectra, linlin') % lin lin plot
+        subplot(2, 2, 4); % log log plot
+        loglog(obj.analysis.q, obj.analysis.Sq_avg_tilted + std(obj.analysis.Sq_tilted, 0, 2), '-', 'Color', "#A2142F", 'LineWidth', 3); hold on;
+        loglog(obj.analysis.q, obj.analysis.Sq_avg_tilted - std(obj.analysis.Sq_tilted, 0, 2), '-', 'Color', "#A2142F", 'LineWidth', 3); alpha 0.5;
+        loglog(obj.analysis.q, obj.analysis.Sq_avg_tilted, '-', 'Color', "#D95319",   'LineWidth', 3)
+        legend('<S(q)>_t', '+ 1 std', '-1 std'); xlabel('Wave vector (pixel^{-1})'); ylabel('S(q) (a.u.?)')
+        title('TILTED power spectra, loglog')
+        end
+        
+        function compute_plot_velocity_matrix(obj)
+        %% this function computes the velocity matrix of the video, 
+        % starting from the waiting time matrix W.
+        % The result is a matrix of size(W) in which every pixel is a
+        % double that contains the velocity of the front in that point, in
+        % pixel/s
+        % At the end is the inverse of W, multiplied by the FrameRate
+            obj.analysis.V = zeros(size(obj.W), 'double'); % initialize the velocity matrix correctly
+
+            % compute it quick and fast, altough hardly readable:
+            % make the inverse of all and only points that are not zero,
+            % then multiply by FrameRate.
+            obj.analysis.V(obj.W~=0) = obj.p.reader.FrameRate./double(obj.W(obj.W~=0));
+
+            figure(); sgtitle('Velocity matrix and waiting time matrix')
+            subplot(2, 1, 1)
+            imshow(obj.W, 'DisplayRange',[min(obj.W, [], 'all') max(obj.W, [], 'all')]);
+            c = colorbar;
+            c.Label.String = 'Accumulation of front points (number of pixels, integer)';
+            xlabel('x coordinate (pixel)'); ylabel('y coordinate (pixel)'); title('Waiting time matrix')
+
+            subplot(2, 1, 2)
+            imshow(obj.analysis.V,'DisplayRange',[min(obj.analysis.V, [], 'all') max(obj.analysis.V, [], 'all')])
+            colormap(copper)
+            c = colorbar;
+            c.Label.String = 'Front velocity (pixel/s)';
+            xlabel('x coordinate (pixel)'); ylabel('y coordinate (pixel)'); title('Velocity matrix')
+        end
         
         function get_pixel_density(obj)
         %% calibrate the space coordinates with an appropriate 
