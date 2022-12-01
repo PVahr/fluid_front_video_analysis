@@ -58,6 +58,8 @@ This is the hand cropping in time of the video, based on the frame number:
 * the compute_and_plot_power_spectrum() function is garbage at the moment
 * the 'get_pixel_density()' is not implemented 
 
+Tags: imbibition, image processing and binarization, fluid front analysis, 2d front extraction, power spectra, waiting time matrix, correlation function, statistical physics, KPZ equation
+
 
 
 
