@@ -1,4 +1,4 @@
-# 2-dimensional fronts of fluids: a Matlab code to analyse them and extract their statical properties
+# 2-dimensional fronts of fluids: a Matlab code to analyse them and extract their statistical properties
 
 This repository is a Matlab code to binarize and further analyse fronts of liquids in 2D.
 It's a cleaned up version of the code I developed during my bachelor's thesis at the Universita' degli Studi di Milano, under the supervision of professor A. Vailati and doctor M. Carpineti.
