@@ -1,12 +1,13 @@
-# fluid_front_video_analysis
-Matlab code to binarize and further analyse fronts of liquids in 2D.
+# 2-dimensional fronts of fluids: a Matlab code to analyse them and extract their statical properties
+
+This repository is a Matlab code to binarize and further analyse fronts of liquids in 2D.
 It's a cleaned up version of the code I developed during my bachelor's thesis at the Universita' degli Studi di Milano, under the supervision of professor A. Vailati and doctor M. Carpineti.
 
 The aim of this piece of code is to 'binarize' a RGB video of a 2D front and extract the front h(x). 
 The variable h(x) contains the height, in pixel, of the front of a single frame. This is then repeated for every single frame, leading to the matrix h(x, t), whose size 1 is the width fo the frame and whose size 2 is the number of frames of the video.
 The code also get the 'waiting time amatrix', W, which is a cumulative sum of all the binarize frames of the video.
 
-The code also allows to crop the video in space or in time 'interactively', quite an handy feature.
+The code also allows to crop the video in space or in time 'interactively', quite an handy feature, or to speed it up of a certain factor (handy for presentations).
 
 ### Input
 a video of a 2d front that evolves in time, or better the relative path to it. Test videos are in ./vid/xxx.avi.
