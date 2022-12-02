@@ -59,7 +59,7 @@ Finaly you can plot the "waiting time matrix", which is simply the accumulation 
 This is the handy interactive cropping of the video:
 ![Screenshot](docs_pics/interactive_cropping.png)
 
-This is the hand cropping in time of the video, based on the frame number:
+This is the handy cropping in time of the video, based on the frame number:
 ![Screenshot](docs_pics/interactive_time_cropping.png)
 
 
