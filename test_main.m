@@ -45,3 +45,5 @@ my_test_vid_2.compute_plot_velocity_matrix()
 
 %% power spectra
 my_test_vid.compute_and_plot_power_spectrum()
+my_test_vid_2.compute_and_plot_power_spectrum()
+

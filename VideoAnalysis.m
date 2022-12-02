@@ -444,13 +444,21 @@ classdef VideoAnalysis < handle
         end
         
         function compute_and_plot_power_spectrum(obj)
-        %% bla
+        %% Compute the power spectral density S(q) of the front h(x, t) and 
+        % of the same front but with periodic boundary conditions added to
+        % it.
+        % Then, plot the time-averaged S(q) in both cases, +- the standard
+        % devition given by time-fluctuations.
+        
+        % Variables:
         % obj.analysis.Sq       same size as obj.h, but the pixel length is half,
         %                       contains the postive power spectra for every frame
         % obj.analysis.Sq_avg   size as obj.x/2, contains the time-average power spectra
         % obj.analysis.q        same size as x/2, contains the wavevector of
         %                       Sq and Sq_avg
-
+        % obj.analysis.h_tilted same as obj.h, but with periodic boundary
+        %                       conditions enforced (see its plotting)
+        
         % initialize stuff correctly
         % (note: h is in uint, Sq are double, trasformation in between)
         N = size(obj.W, 2);                         % horizontal length of the frame
