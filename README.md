@@ -45,8 +45,16 @@ With Verbose = true, you can call binarize_video() and you will see all the diff
 The binarization interface, when Verbose = true,  spits out when the front has more than one "1" pixel; if so, it will take the average:
 ![Screenshot](docs_pics/binarization_interface_w_verbose.png) 
 
-The plotting of h(x, t) is basic but does the job:
-![Screenshot](docs_pics/front_plot.png)
+You can plot the fronts h(x, t), either all toghether (waiting time matrix and time overlay) or looking at the space averaged or time average quantities:
+![Screenshot](docs_pics/fronts.png)
+
+You can call 'compute_and_plot_power_spectrum()' to plot the spatial power spectra, averaged over the whole video, of the front.
+It can reveal characteristic length scales and power law behaviours, but to obtain meaningful scaling the front must be continuos, i.e. there must be no jump between the left and right extrema of it. 
+This is implemented by "tilting" it, substracting the appropriate linear slope, as you can appreciate in the plot:
+![Screenshot](docs_pics/power_spectra.png)
+
+Finaly you can plot the "waiting time matrix", which is simply the accumulation of the front in all frames of the video, and its kind of inverse, the "velocity matrix", which is obtained by inverting every non-zero point of the waiting time matrix and multipling it by the frame rate of the video:
+![Screenshot](docs_pics/velocity_matrix.png)
 
 This is the handy interactive cropping of the video:
 ![Screenshot](docs_pics/interactive_cropping.png)
@@ -56,8 +64,9 @@ This is the hand cropping in time of the video, based on the frame number:
 
 
 ### TODO/bugs
-* the compute_and_plot_power_spectrum() function is garbage at the moment
 * the 'get_pixel_density()' is not implemented 
+* spatial correlation functions and return probabilities are not implemented
+* the binarization will fail if the front is missing in the first column of any frame. This is because if the front in a certain column is missing, it will be replaced by the value of the previous column. A better way would be some kind of runnning average on first or second neighbours columns.
 
 Tags: imbibition, image processing and binarization, fluid front analysis, 2d front extraction, power spectra, waiting time matrix, correlation function, statistical physics, KPZ equation
 
