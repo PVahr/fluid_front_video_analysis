@@ -6,7 +6,7 @@ It's a cleaned up version of the code I developed during my bachelor's thesis at
 ![Screenshot](docs_pics/nice_scheme.png)
 
 The aim of this piece of code is to 'binarize' a RGB video of a 2D front and extract the front h(x). 
-The variable h(x) contains the height, in pixel, of the front of a single frame. This is then repeated for every single frame, leading to the matrix h(x, t), whose size 1 is the width fo the frame and whose size 2 is the number of frames of the video.
+The variable h(x) contains the height, in pixel, of the front of a single frame. This is then repeated for every single frame, leading to the matrix h(x, t), whose size 1 is the width of the frame and whose size 2 is the number of frames of the video.
 The code also gets the 'waiting time amatrix', W, which is a cumulative sum of all the binarized frames of the video.
 
 Optionally, the code allows to crop the video in space or in time 'interactively', quite an handy feature, or to speed it up of a certain factor (handy for presentations).
@@ -26,7 +26,7 @@ a video of a 2d front that evolves in time, or better the relative path to it. T
 * optional: plotting of the h(x, t), averaged in different ways, and W; The plots are also saved in a .pdf in ./vid/xxx/xxx.pdf
 
 ### Code structure:
-* class VideoAnalysis.m: main class that does everything. Call the different methods of the class to binarize the video, cropt it interactively in space and/or time, save the binarize video and the front h(x,t) and do the power spectra analysis
+* class VideoAnalysis.m: main class that does everything. Call the different methods of the class to binarize the video, crop it interactively in space and/or time, save the binarize video and the front h(x,t) and do the power spectra analysis
 * a test_main file to test the VideoAnalysis class, where you will find examples on how to use it
 * in /vid/*.avi folder there are 2 videos to be used as a test
 
