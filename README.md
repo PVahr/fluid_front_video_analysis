@@ -5,14 +5,14 @@ It's a cleaned up version of the code I developed during my bachelor's thesis at
 
 The aim of this piece of code is to 'binarize' a RGB video of a 2D front and extract the front h(x). 
 The variable h(x) contains the height, in pixel, of the front of a single frame. This is then repeated for every single frame, leading to the matrix h(x, t), whose size 1 is the width fo the frame and whose size 2 is the number of frames of the video.
-The code also get the 'waiting time amatrix', W, which is a cumulative sum of all the binarize frames of the video.
+The code also gets the 'waiting time amatrix', W, which is a cumulative sum of all the binarized frames of the video.
 
-The code also allows to crop the video in space or in time 'interactively', quite an handy feature, or to speed it up of a certain factor (handy for presentations).
+Optionally, the code allows to crop the video in space or in time 'interactively', quite an handy feature, or to speed it up of a certain factor (handy for presentations).
 
 ### Input
 a video of a 2d front that evolves in time, or better the relative path to it. Test videos are in ./vid/xxx.avi.
 ### Options:
-* Verbose = true/false; if true, print and plot a lot of very usefull stuff to check if the binarization of the video is correct
+* Verbose = true/false; if true, print and plot a lot of very usefull stuff to check if the binarization of the video is correct. Set it to ture the first time you use the code. 
 * Reload = true/false; if true, reload the front matrix h(x, t) and other variables from the appropriate .mat file stored in ./fronts/xxx/xxx/.mat              
 
 ### Output:
@@ -33,7 +33,7 @@ a video of a 2d front that evolves in time, or better the relative path to it. T
 * a violent "bwareaopen' function is applied, with a connectivity parameter of 20 000 or so. This works great to remove everything that is not the front itself, but may fail for your own specific video. If so, tweak it.
 * edge detection is done with the ''edge'' function of Matlab, using the standard 'sobel' method. Works for my video, but it might fail in your case; if so, tweak it till it works.
 * if tweaking the above 3 points does not make it work, maybe the problem is in the video: contrast and illumination must be already good to be able to analyse them
-* may fail on Windows due to wrong paths (/ instad of \, tested on Linux and Mac only)
+* may fail on Windows due to wrong paths (/ instad of backslash, tested on Linux and Mac only)
 * there is currently no background subtraction 
 * it works only for RGB videos. For videos taken in grayscale you will have to manually remove all the "rgb2gray()" functions present in the code.
 * output are quite heavily compressed .avi videos. The code is not designed/tested on .tiff or more scientific/compressionless formats.
@@ -49,14 +49,14 @@ You can plot the fronts h(x, t), either all toghether (waiting time matrix and t
 ![Screenshot](docs_pics/fronts.png)
 
 You can call 'compute_and_plot_power_spectrum()' to plot the spatial power spectra, averaged over the whole video, of the front.
-It can reveal characteristic length scales and power law behaviours, but to obtain meaningful scaling the front must be continuos, i.e. there must be no jump between the left and right extrema of it. 
-This is implemented by "tilting" it, substracting the appropriate linear slope, as you can appreciate in the plot:
+It can reveal characteristic length scales and power law behaviours, but to obtain meaningful scaling the front must be continuos, i.e. there must be no jump between the left and right extrema of it. A jump will give an artificial power law behaviour S(q) ~ q^-2, which is its Fourier transform.
+The fix is implemented by "tilting" the front, substracting the appropriate linear slope, as you can appreciate in the plot:
 ![Screenshot](docs_pics/power_spectra.png)
 
-Finaly you can plot the "waiting time matrix", which is simply the accumulation of the front in all frames of the video, and its kind of inverse, the "velocity matrix", which is obtained by inverting every non-zero point of the waiting time matrix and multipling it by the frame rate of the video:
+Finally you can plot the "waiting time matrix", which is simply the accumulation of the front in all frames of the video, and its kind of inverse, the "velocity matrix", which is obtained by inverting every non-zero point of the waiting time matrix and multipling it by the frame rate of the video:
 ![Screenshot](docs_pics/velocity_matrix.png)
 
-This is the handy interactive cropping of the video:
+This is the handy interactive cropping of the video (it plots first middle last frames):
 ![Screenshot](docs_pics/interactive_cropping.png)
 
 This is the handy cropping in time of the video, based on the frame number:
