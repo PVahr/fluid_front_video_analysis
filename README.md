@@ -17,7 +17,7 @@ a video of a 2d front that evolves in time, or better the relative path to it. T
 * Verbose = true/false; if true, print and plot a lot of very usefull stuff to check if the binarization of the video is correct. Set it to ture the first time you use the code. 
 * Reload = true/false; if true, reload the front matrix h(x, t) and other variables from the appropriate .mat file stored in ./fronts/xxx/xxx/.mat              
 
-### Output:
+### Output
 * the binarized video that contains the front only, in ./vid/xxx_bin.xxx
 * a vector h(x) with the front, that evolves in time and is stored like a 2d matrix h(x, t); the waiting time matrix W and their x and t vector; the parameters of the video (path, VideoReader object, etc) stored as a small class  named p. All these variables are saved in ./fronts/xxx/xxx.mat
 * optional: a video cropped in space, in ./vid/xxx_c.avi
@@ -25,12 +25,12 @@ a video of a 2d front that evolves in time, or better the relative path to it. T
 * optional: a video speeded up of a factor, f, in ./vid/xxx_speedup_fx.avi; mainly for presentations purposes
 * optional: plotting of the h(x, t), averaged in different ways, and W; The plots are also saved in a .pdf in ./vid/xxx/xxx.pdf
 
-### Code structure:
+### Code structure
 * class VideoAnalysis.m: main class that does everything. Call the different methods of the class to binarize the video, crop it interactively in space and/or time, save the binarize video and the front h(x,t) and do the power spectra analysis
 * a test_main file to test the VideoAnalysis class, where you will find examples on how to use it
 * in /vid/*.avi folder there are 2 videos to be used as a test
 
-### Notes:
+### Notes
 * binarization is done with ''imbinarize'' using 'global' method; may not work for your case, if so tweak it till works.
 * a violent "bwareaopen' function is applied, with a connectivity parameter of 20 000 or so. This works great to remove everything that is not the front itself, but may fail for your own specific video. If so, tweak it.
 * edge detection is done with the ''edge'' function of Matlab, using the standard 'sobel' method. Works for my video, but it might fail in your case; if so, tweak it till it works.
