@@ -67,7 +67,7 @@ classdef VideoAnalysis < handle
         %% this function binarize the video (imbinarize, bwareaopen, edge 
         % detection with Sobel), and saves it in vid/xxx_bin.avi
         % *** will fail if the video is NOT in RGB (if so, removed 'rgb2gray' everywhere)  ***
-        obj.p.connectivity = 20000; % connectivity for bwareaopen is defined here
+        obj.p.connectivity = 2000; % connectivity for bwareaopen is defined here
 
         % first, plot all the steps separately IF Verbose
         % fig1: original, grayscale, RGB separately
@@ -134,8 +134,14 @@ classdef VideoAnalysis < handle
                         col = bw(:, j); % get the single vertical columns
                         if ~any(col)
                             fprintf('*** Column %i of frame %i without any point!! ***!!!\n', j, i)
-                            obj.h(j, i) = obj.h(j-1, 1);
-                            fprintf('*** Replaced with neighbour value of %i, finger crossed, will fail for the first column***\n', obj.h(j-1, 1))
+                            if j > 1
+                                obj.h(j, i) = obj.h(j-1, 1);
+                                fprintf('*** Replaced with neighbour value of %i, finger crossed, will fail for the first column***\n', obj.h(j-1, 1))
+                            else
+                                fprintf('*** The first column of the frame has no point in it!\n I put the one form the previous frame, will fai for the first frame!***')
+                                obj.h(j, i) = obj.h(j, i-1);
+                            end
+                                
                         else
                             if sum(col)>1
                                 fprintf('In column %i of frame %i there are %i points\n', j, i, sum(col))
@@ -183,7 +189,7 @@ classdef VideoAnalysis < handle
         for i=1:size(front, 2) % cycle over x of front
             col = front(:, i);
             if ~any(col)
-                fprintf('There is a column without any point!!\CASE NOT IMPLEMENTED!!!\n')
+                fprintf('There is a column without any point!!\n CASE NOT IMPLEMENTED!!!\n')
             end
             if sum(col)>1
                 fprintf('In column %i there are %i points\n', i, sum(col))
